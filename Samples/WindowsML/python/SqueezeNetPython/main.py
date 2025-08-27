@@ -71,12 +71,13 @@ if __name__ == "__main__":
     model_path = resource_path / "Model" / "SqueezeNet.onnx"
     compiled_model_path = resource_path / "Model" / "SqueezeNet_ctx.onnx"
     session_options = ort.SessionOptions()
+    session_options.log_severity_level = 1
     # Change your policy here.
     if useWinML:
         session_options.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_NPU if useNPU else ort.OrtExecutionProviderDevicePolicy.PREFER_GPU)
         assert session_options.has_providers()
 
-    if compiled_model_path.exists():
+    if compiled_model_path.exists() and False:
         print("Using compiled model")
     else:
         print("No compiled model found, attempting to create compiled model at ", compiled_model_path)  
