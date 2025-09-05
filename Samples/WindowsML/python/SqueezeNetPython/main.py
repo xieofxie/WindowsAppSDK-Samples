@@ -1,6 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
 
+#import torch
 from pathlib import Path
 from PIL import Image
 import numpy as np
@@ -66,15 +67,25 @@ def run(images_folder: Path, session: ort.InferenceSession, labels):
         img_array = load_and_preprocess_image(image_file)
         print("Running inference ...")
         input_name = session.get_inputs()[0].name
-        while time.time() - now < 5:
+        while time.time() - now < 10:
             results = session.run(None, {input_name: img_array})[0]
             time.sleep(0.01)
         print_results(labels, results, is_logit=False)
         break
 
+def add_ep_for_device(session_options, ep_name, device_type, ep_options=None):
+    ep_devices = ort.get_ep_devices()
+    for ep_device in ep_devices:
+        print(f"Found EP: {ep_device.ep_name} for {ep_device.device.type}")
+        if ep_device.ep_name == ep_name and ep_device.device.type == device_type:
+            print(f"Adding {ep_name} for {device_type}")
+            session_options.add_provider_for_devices([ep_device], {} if ep_options is None else ep_options)
+            break
+
 if __name__ == "__main__":
+    #print(torch.cuda.is_available())
     print("Registering execution providers ...")
-    #register_execution_providers()
+    register_execution_providers()
     
     print("Creating session ...")
 
@@ -83,8 +94,8 @@ if __name__ == "__main__":
     compiled_model_path = resource_path / "Model" / "SqueezeNet_ctx.onnx"
     session_options = ort.SessionOptions()
     # Change your policy here.
-    session_options.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_NPU)
-    print(session_options.has_providers())
+    add_ep_for_device(session_options, "DmlExecutionProvider", ort.OrtHardwareDeviceType.GPU)
+    #session_options.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_GPU)
     assert session_options.has_providers()
 
     # if compiled_model_path.exists():
@@ -105,7 +116,10 @@ if __name__ == "__main__":
     session = ort.InferenceSession(
         model_path_to_use,
         sess_options=session_options,
+        #providers=['CUDAExecutionProvider']
     )
+    
+    input("Wait for start")
 
     labels = load_labels(resource_path / "Model" / "SqueezeNet.Labels.txt")
 
@@ -114,13 +128,14 @@ if __name__ == "__main__":
 
     session_options2 = ort.SessionOptions()
     # Change your policy here.
-    session_options2.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_GPU)
-    print(session_options2.has_providers())
+    add_ep_for_device(session_options2, "CPUExecutionProvider", ort.OrtHardwareDeviceType.CPU)
+    #session_options2.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_NPU)
     assert session_options2.has_providers()
 
     session2 = ort.InferenceSession(
         model_path_to_use,
         sess_options=session_options2,
+        #providers=['CUDAExecutionProvider']
     )
     run(images_folder, session2, labels)
 

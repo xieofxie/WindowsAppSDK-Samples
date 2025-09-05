@@ -1,2 +1,3 @@
 # https://aiinfra.visualstudio.com/PublicPackages/_artifacts/feed/ORT-Nightly
 # pip install onnxruntime-gpu==1.23.0.dev20250903003 --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/ORT-Nightly/pypi/simple --no-deps
+# follow GA bugbash instead https://github.com/microsoft/olive-recipes/pull/32/files#diff-0f34d75ed9ad80e790af7ced31280623e2734e0e3eb3b14739fe015e5f6271d6
