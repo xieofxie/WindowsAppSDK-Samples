@@ -8,6 +8,7 @@ import onnxruntime as ort
 import subprocess
 import sys
 import json
+import time
 
 def register_execution_providers():
     # Run this in another process to avoid a issue where 
@@ -56,16 +57,20 @@ def print_results(labels, results, is_logit=False):
     
     print("-"*50)
 
+# Run for seconds
 def run(images_folder: Path, session: ort.InferenceSession, labels):
+    now = time.time()
     for image_file in images_folder.iterdir():  
         print(f"Running inference on image: {image_file}")
         print("Preparing input ...")
         img_array = load_and_preprocess_image(image_file)
         print("Running inference ...")
         input_name = session.get_inputs()[0].name
-        for i in range(1000):
+        while time.time() - now < 5:
             results = session.run(None, {input_name: img_array})[0]
+            time.sleep(0.01)
         print_results(labels, results, is_logit=False)
+        break
 
 if __name__ == "__main__":
     print("Registering execution providers ...")
