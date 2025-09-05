@@ -56,9 +56,20 @@ def print_results(labels, results, is_logit=False):
     
     print("-"*50)
 
+def run(images_folder: Path, session: ort.InferenceSession, labels):
+    for image_file in images_folder.iterdir():  
+        print(f"Running inference on image: {image_file}")
+        print("Preparing input ...")
+        img_array = load_and_preprocess_image(image_file)
+        print("Running inference ...")
+        input_name = session.get_inputs()[0].name
+        for i in range(1000):
+            results = session.run(None, {input_name: img_array})[0]
+        print_results(labels, results, is_logit=False)
+
 if __name__ == "__main__":
     print("Registering execution providers ...")
-    register_execution_providers()
+    #register_execution_providers()
     
     print("Creating session ...")
 
@@ -68,20 +79,21 @@ if __name__ == "__main__":
     session_options = ort.SessionOptions()
     # Change your policy here.
     session_options.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_NPU)
+    print(session_options.has_providers())
     assert session_options.has_providers()
 
-    if compiled_model_path.exists():
-        print("Using compiled model")
-    else:
-        print("No compiled model found, attempting to create compiled model at ", compiled_model_path)  
-        model_compiler = ort.ModelCompiler(session_options, model_path)
-        print("Starting compile, this may take a few moments..." )
-        try:
-            model_compiler.compile_to_file(compiled_model_path)
-            print("Model compiled successfully")
-        except Exception as e:
-            print("Model compilation failed:", e)
-            print("Falling back to uncompiled model")
+    # if compiled_model_path.exists():
+    #     print("Using compiled model")
+    # else:
+    #     print("No compiled model found, attempting to create compiled model at ", compiled_model_path)  
+    #     model_compiler = ort.ModelCompiler(session_options, model_path)
+    #     print("Starting compile, this may take a few moments..." )
+    #     try:
+    #         model_compiler.compile_to_file(compiled_model_path)
+    #         print("Model compiled successfully")
+    #     except Exception as e:
+    #         print("Model compilation failed:", e)
+    #         print("Falling back to uncompiled model")
 
     model_path_to_use = compiled_model_path if compiled_model_path.exists() else model_path
 
@@ -93,11 +105,18 @@ if __name__ == "__main__":
     labels = load_labels(resource_path / "Model" / "SqueezeNet.Labels.txt")
 
     images_folder = resource_path / "Images"
-    for image_file in images_folder.iterdir():  
-        print(f"Running inference on image: {image_file}")
-        print("Preparing input ...")
-        img_array = load_and_preprocess_image(image_file)
-        print("Running inference ...")
-        input_name = session.get_inputs()[0].name
-        results = session.run(None, {input_name: img_array})[0]
-        print_results(labels, results, is_logit=False)
+    run(images_folder, session, labels)
+
+    session_options2 = ort.SessionOptions()
+    # Change your policy here.
+    session_options2.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_GPU)
+    print(session_options2.has_providers())
+    assert session_options2.has_providers()
+
+    session2 = ort.InferenceSession(
+        model_path_to_use,
+        sess_options=session_options2,
+    )
+    run(images_folder, session2, labels)
+
+    run(images_folder, session, labels)
