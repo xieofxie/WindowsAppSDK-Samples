@@ -57,27 +57,38 @@ def print_results(labels, results, is_logit=False):
     
     print("-"*50)
 
+def add_ep_for_device(session_options, ep_name, device_type, ep_options=None):
+    ep_devices = ort.get_ep_devices()
+    for ep_device in ep_devices:
+        print(f"Found EP: {ep_device.ep_name} for {ep_device.device.type}")
+        if ep_device.ep_name == ep_name and ep_device.device.type == device_type:
+            print(f"Adding {ep_name} for {device_type}")
+            session_options.add_provider_for_devices([ep_device], {} if ep_options is None else ep_options)
+            break
+
 if __name__ == "__main__":
     useWinML = "--onnx" not in sys.argv
     useNPU = "--gpu" not in sys.argv
     print("Registering execution providers ...")
     if useWinML:
         register_execution_providers()
+        print([[d.ep_name, d.device.type] for d in ort.get_ep_devices()])
     print(ort.get_available_providers())
-    
     print("Creating session ...")
 
     resource_path = Path(__file__).parent.parent 
     model_path = resource_path / "Model" / "SqueezeNet.onnx"
     compiled_model_path = resource_path / "Model" / "SqueezeNet_ctx.onnx"
     session_options = ort.SessionOptions()
-    session_options.log_severity_level = 1
+    #session_options.log_severity_level = 1
     # Change your policy here.
     if useWinML:
-        session_options.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_NPU if useNPU else ort.OrtExecutionProviderDevicePolicy.PREFER_GPU)
+        # https://learn.microsoft.com/en-us/windows/ai/new-windows-ml/select-execution-providers?tabs=python#explicit-selection-of-eps
+        add_ep_for_device(session_options, 'QNNExecutionProvider',  ort.OrtHardwareDeviceType.NPU, {"htp_performance_mode": "high_performance"})
+        #session_options.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_NPU if useNPU else ort.OrtExecutionProviderDevicePolicy.PREFER_GPU)
         assert session_options.has_providers()
 
-    if compiled_model_path.exists() and False:
+    if compiled_model_path.exists():
         print("Using compiled model")
     else:
         print("No compiled model found, attempting to create compiled model at ", compiled_model_path)  
@@ -126,6 +137,8 @@ if __name__ == "__main__":
     run("NPU" if useNPU else "GPU", session)
 
     # CPU
+    session_options = ort.SessionOptions()
+    #session_options.log_severity_level = 1
     if useWinML:
         session_options.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_CPU)
     providers = None if useWinML else ['CPUExecutionProvider']
