@@ -59,7 +59,7 @@ def print_results(labels, results, is_logit=False):
     print("-"*50)
 
 # Run for seconds
-def run(images_folder: Path, session: ort.InferenceSession, labels):
+def run(images_folder: Path, session: ort.InferenceSession, labels, duration: float = 10):
     now = time.time()
     for image_file in images_folder.iterdir():  
         print(f"Running inference on image: {image_file}")
@@ -67,7 +67,7 @@ def run(images_folder: Path, session: ort.InferenceSession, labels):
         img_array = load_and_preprocess_image(image_file)
         print("Running inference ...")
         input_name = session.get_inputs()[0].name
-        while time.time() - now < 10:
+        while time.time() - now < duration:
             results = session.run(None, {input_name: img_array})[0]
             time.sleep(0.01)
         print_results(labels, results, is_logit=False)
@@ -94,8 +94,8 @@ if __name__ == "__main__":
     compiled_model_path = resource_path / "Model" / "SqueezeNet_ctx.onnx"
     session_options = ort.SessionOptions()
     # Change your policy here.
-    add_ep_for_device(session_options, "DmlExecutionProvider", ort.OrtHardwareDeviceType.GPU)
-    #session_options.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_GPU)
+    #add_ep_for_device(session_options, "DmlExecutionProvider", ort.OrtHardwareDeviceType.GPU)
+    session_options.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_GPU)
     assert session_options.has_providers()
 
     # if compiled_model_path.exists():
@@ -128,8 +128,8 @@ if __name__ == "__main__":
 
     session_options2 = ort.SessionOptions()
     # Change your policy here.
-    add_ep_for_device(session_options2, "CPUExecutionProvider", ort.OrtHardwareDeviceType.CPU)
-    #session_options2.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_NPU)
+    #add_ep_for_device(session_options2, "CPUExecutionProvider", ort.OrtHardwareDeviceType.CPU)
+    session_options2.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_NPU)
     assert session_options2.has_providers()
 
     session2 = ort.InferenceSession(
@@ -137,6 +137,6 @@ if __name__ == "__main__":
         sess_options=session_options2,
         #providers=['CUDAExecutionProvider']
     )
-    run(images_folder, session2, labels)
+    run(images_folder, session2, labels, 5)
 
-    run(images_folder, session, labels)
+    run(images_folder, session, labels, 5)
