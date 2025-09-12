@@ -121,12 +121,13 @@ if __name__ == "__main__":
         #providers=['CUDAExecutionProvider']
     )
     
-    input("Wait for start")
+    # input("Wait for start")
+    time.sleep(5)
 
     labels = load_labels(resource_path / "Model" / "SqueezeNet.Labels.txt")
 
     images_folder = resource_path / "Images"
-    run(images_folder, session, labels)
+    run(images_folder, session, labels, 5)
 
     session_options2 = ort.SessionOptions()
     # Change your policy here.
@@ -139,6 +140,9 @@ if __name__ == "__main__":
         sess_options=session_options2,
         #providers=['QNNExecutionProvider']
     )
-    run(images_folder, session2, labels, 10)
+    run(images_folder, session2, labels, 5)
+    del session2
 
-    run(images_folder, session, labels, 10)
+    run(images_folder, session, labels, 5)
+
+    time.sleep(5)
