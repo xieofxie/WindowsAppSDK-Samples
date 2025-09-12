@@ -10,6 +10,7 @@ import subprocess
 import sys
 import json
 import time
+import os
 
 def register_execution_providers():
     # Run this in another process to avoid a issue where 
@@ -83,6 +84,7 @@ def add_ep_for_device(session_options, ep_name, device_type, ep_options=None):
             break
 
 if __name__ == "__main__":
+    print(os.getpid())
     #print(torch.cuda.is_available())
     print("Registering execution providers ...")
     register_execution_providers()
@@ -94,7 +96,7 @@ if __name__ == "__main__":
     compiled_model_path = resource_path / "Model" / "SqueezeNet_ctx.onnx"
     session_options = ort.SessionOptions()
     # Change your policy here.
-    #add_ep_for_device(session_options, "DmlExecutionProvider", ort.OrtHardwareDeviceType.GPU)
+    #add_ep_for_device(session_options, "CPUExecutionProvider", ort.OrtHardwareDeviceType.CPU)
     session_options.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_GPU)
     assert session_options.has_providers()
 
@@ -128,15 +130,15 @@ if __name__ == "__main__":
 
     session_options2 = ort.SessionOptions()
     # Change your policy here.
-    #add_ep_for_device(session_options2, "CPUExecutionProvider", ort.OrtHardwareDeviceType.CPU)
+    #add_ep_for_device(session_options2, "QNNExecutionProvider", ort.OrtHardwareDeviceType.NPU)
     session_options2.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_NPU)
     assert session_options2.has_providers()
 
     session2 = ort.InferenceSession(
         model_path_to_use,
         sess_options=session_options2,
-        #providers=['CUDAExecutionProvider']
+        #providers=['QNNExecutionProvider']
     )
-    run(images_folder, session2, labels, 5)
+    run(images_folder, session2, labels, 10)
 
-    run(images_folder, session, labels, 5)
+    run(images_folder, session, labels, 10)
