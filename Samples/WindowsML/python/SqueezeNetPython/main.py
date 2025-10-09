@@ -69,6 +69,7 @@ def add_ep_for_device(session_options, ep_name, device_type, ep_options=None):
 if __name__ == "__main__":
     useWinML = "--onnx" not in sys.argv
     useNPU = "--gpu" not in sys.argv
+    useDenseNet = "--dense" in sys.argv
     print("Registering execution providers ...")
     if useWinML:
         register_execution_providers()
@@ -76,16 +77,22 @@ if __name__ == "__main__":
     print(ort.get_available_providers())
     print("Creating session ...")
 
-    resource_path = Path(__file__).parent.parent 
-    model_path = resource_path / "Model" / "SqueezeNet.onnx"
-    compiled_model_path = resource_path / "Model" / "SqueezeNet_ctx.onnx"
+    resource_path = Path(__file__).parent.parent
+    if useDenseNet:
+        model_path = resource_path / "Model" / "densenet-12.onnx"
+        compiled_model_path = resource_path / "Model" / "densenet-12_ctx.onnx"
+    else:
+        model_path = resource_path / "Model" / "SqueezeNet.onnx"
+        compiled_model_path = resource_path / "Model" / "SqueezeNet_ctx.onnx"
     session_options = ort.SessionOptions()
     #session_options.log_severity_level = 1
     # Change your policy here.
     if useWinML:
+        if useNPU:
         # https://learn.microsoft.com/en-us/windows/ai/new-windows-ml/select-execution-providers?tabs=python#explicit-selection-of-eps
-        add_ep_for_device(session_options, 'QNNExecutionProvider',  ort.OrtHardwareDeviceType.NPU, {"htp_performance_mode": "high_performance"})
-        #session_options.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_NPU if useNPU else ort.OrtExecutionProviderDevicePolicy.PREFER_GPU)
+            add_ep_for_device(session_options, 'QNNExecutionProvider',  ort.OrtHardwareDeviceType.NPU, {"htp_performance_mode": "high_performance"})
+        else:
+            session_options.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_NPU if useNPU else ort.OrtExecutionProviderDevicePolicy.PREFER_GPU)
         assert session_options.has_providers()
 
     if compiled_model_path.exists():
