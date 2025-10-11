@@ -69,7 +69,12 @@ def add_ep_for_device(session_options, ep_name, device_type, ep_options=None):
 if __name__ == "__main__":
     useWinML = "--onnx" not in sys.argv
     useNPU = "--gpu" not in sys.argv
-    useDenseNet = "--dense" in sys.argv
+    noCompile = "--noc" in sys.argv
+    if "--name" in sys.argv:
+        model_name = sys.argv[sys.argv.index("--name") + 1]
+    else:
+        model_name = "SqueezeNet"
+    
     print("Registering execution providers ...")
     if useWinML:
         register_execution_providers()
@@ -78,18 +83,14 @@ if __name__ == "__main__":
     print("Creating session ...")
 
     resource_path = Path(__file__).parent.parent
-    if useDenseNet:
-        model_path = resource_path / "Model" / "densenet-12.onnx"
-        compiled_model_path = resource_path / "Model" / "densenet-12_ctx.onnx"
-    else:
-        model_path = resource_path / "Model" / "SqueezeNet.onnx"
-        compiled_model_path = resource_path / "Model" / "SqueezeNet_ctx.onnx"
+    model_path = resource_path / "Model" / (model_name + ".onnx")
+    compiled_model_path = resource_path / "Model" / (model_name + ("" if useNPU else "_gpu") + "_ctx.onnx")
     session_options = ort.SessionOptions()
     #session_options.log_severity_level = 1
     # Change your policy here.
     if useWinML:
-        if useNPU:
-        # https://learn.microsoft.com/en-us/windows/ai/new-windows-ml/select-execution-providers?tabs=python#explicit-selection-of-eps
+        if False and useNPU:
+            # https://learn.microsoft.com/en-us/windows/ai/new-windows-ml/select-execution-providers?tabs=python#explicit-selection-of-eps
             add_ep_for_device(session_options, 'QNNExecutionProvider',  ort.OrtHardwareDeviceType.NPU, {"htp_performance_mode": "high_performance"})
         else:
             session_options.set_provider_selection_policy(ort.OrtExecutionProviderDevicePolicy.PREFER_NPU if useNPU else ort.OrtExecutionProviderDevicePolicy.PREFER_GPU)
@@ -97,7 +98,7 @@ if __name__ == "__main__":
 
     if compiled_model_path.exists():
         print("Using compiled model")
-    else:
+    elif useWinML and not noCompile:
         print("No compiled model found, attempting to create compiled model at ", compiled_model_path)  
         model_compiler = ort.ModelCompiler(session_options, model_path)
         print("Starting compile, this may take a few moments..." )
@@ -108,7 +109,7 @@ if __name__ == "__main__":
             print("Model compilation failed:", e)
             print("Falling back to uncompiled model")
 
-    model_path_to_use = compiled_model_path if compiled_model_path.exists() and useWinML and useNPU else model_path
+    model_path_to_use = compiled_model_path if compiled_model_path.exists() and useWinML and not noCompile else model_path
 
     providers = None if useWinML else ['QNNExecutionProvider' if useNPU else 'DmlExecutionProvider']
     provider_options = None if useWinML else [{"htp_performance_mode": "burst"}]
