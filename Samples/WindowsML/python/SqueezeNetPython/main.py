@@ -122,7 +122,7 @@ if __name__ == "__main__":
     )
     
     # input("Wait for start")
-    time.sleep(5)
+    time.sleep(3)
 
     labels = load_labels(resource_path / "Model" / "SqueezeNet.Labels.txt")
 
@@ -144,5 +144,3 @@ if __name__ == "__main__":
     del session2
 
     run(images_folder, session, labels, 5)
-
-    time.sleep(5)
